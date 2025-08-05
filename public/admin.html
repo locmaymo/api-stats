@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Statistics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .login-form {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-form h2 {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .dashboard {
+            display: none;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 1.5rem;
+        }
+
+        .logout-btn {
+            padding: 0.5rem 1rem;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .filters {
+            background: white;
+            margin: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .filter-group label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .filter-group input, .filter-group select {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+
+        .apply-filters-btn {
+            padding: 0.5rem 1rem;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            height: fit-content;
+            margin-top: auto;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Nhỏ hơn */
+            gap: 1rem;
+            margin: 1rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1rem; /* Giảm padding */
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            min-height: auto; /* Cho phép chiều cao tự động */
+        }
+
+        .stat-card h3 {
+            margin-bottom: 1rem;
+            color: #333;
+            font-size: 1.125rem;
+        }
+
+        .stat-number {
+            font-size: 1.5rem; /* Giảm font size */
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.875rem;
+        }
+
+        .chart-container {
+            background: white;
+            margin: 1rem;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-height: 400px; /* Giới hạn chiều cao */
+        }
+
+        .chart-container canvas {
+            max-height: 300px !important; /* Giới hạn chiều cao canvas */
+            width: 100% !important;
+            height: auto !important;
+        }
+
+        .tabs {
+            display: flex;
+            background: white;
+            margin: 1rem;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 1rem;
+            background: #f8f9fa;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.2s;
+        }
+
+        .tab.active {
+            background: #007bff;
+            color: white;
+        }
+
+        .tab-content {
+            margin: 1rem;
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .data-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+
+        .data-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .pagination button {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            background: white;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .pagination button.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 0.75rem;
+            border-radius: 4px;
+            margin: 1rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .export-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .filter-controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .export-btn, .filter-btn {
+            padding: 0.5rem 1rem;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+        
+        .export-btn:hover, .filter-btn:hover {
+            background: #218838;
+        }
+        
+        .api-key-cell {
+            font-family: monospace;
+            font-size: 0.875rem;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .usage-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+        
+        .usage-high { background: #dc3545; color: white; }
+        .usage-medium { background: #ffc107; color: #333; }
+        .usage-low { background: #28a745; color: white; }
+        
+        .duplicate-badge {
+            background: #ff6b6b;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            margin-left: 0.5rem;
+        }
+        
+        .details-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 1000px; /* Tăng max-width modal */
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-content .chart-container {
+            max-height: 300px; /* Biểu đồ trong modal nhỏ hơn */
+            margin: 1rem 0;
+        }
+
+        .modal-content .chart-container canvas {
+            max-height: 200px !important; /* Canvas trong modal nhỏ hơn */
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 1rem;
+        }
+        
+        .close-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* Responsive cho mobile */
+        @media (max-width: 768px) {
+            .chart-container {
+                margin: 0.5rem;
+                padding: 1rem;
+                max-height: 300px;
+            }
+            
+            .chart-container canvas {
+                max-height: 200px !important;
+            }
+            
+            .modal-content {
+                width: 95%;
+                margin: 2% auto;
+                padding: 1rem;
+            }
+            
+            .modal-content .chart-container canvas {
+                max-height: 150px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Form -->
+    <div id="loginContainer" class="login-container">
+        <form id="loginForm" class="login-form">
+            <h2>Admin Login</h2>
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit" class="login-btn">Login</button>
+        </form>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard" class="dashboard">
+        <header class="header">
+            <h1>API Statistics Dashboard</h1>
+            <button id="logoutBtn" class="logout-btn">Logout</button>
+        </header>
+
+        <!-- Filters -->
+        <div class="filters">
+            <div class="filter-group">
+                <label for="startDate">Start Date:</label>
+                <input type="datetime-local" id="startDate">
+            </div>
+            <div class="filter-group">
+                <label for="endDate">End Date:</label>
+                <input type="datetime-local" id="endDate">
+            </div>
+            <button id="applyFilters" class="apply-filters-btn">Apply Filters</button>
+        </div>
+
+        <!-- Overview Stats -->
+        <div id="overviewStats" class="stats-grid">
+            <!-- Stats cards will be inserted here -->
+        </div>
+
+        <!-- Timeline Chart -->
+        <div class="chart-container">
+            <h3>Request Timeline</h3>
+            <canvas id="timelineChart"></canvas>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" data-tab="handles">By Handle</button>
+            <button class="tab" data-tab="sources">By Source</button>
+            <button class="tab" data-tab="proxies">By Proxy</button>
+            <button class="tab" data-tab="apikeys">API Keys</button>
+            <button class="tab" data-tab="duplicates">Duplicates</button>
+            <button class="tab" data-tab="topkeys">Top Keys</button>
+        </div>
+
+        <!-- Tab Contents -->
+        <div class="tab-content">
+            <div id="handlesTab" class="tab-panel active">
+                <h3>Statistics by Handle</h3>
+                <div id="handlesTable"></div>
+                <div id="handlesPagination" class="pagination"></div>
+            </div>
+            
+            <div id="sourcesTab" class="tab-panel">
+                <h3>Statistics by Chat Completion Source</h3>
+                <div id="sourcesTable"></div>
+            </div>
+            
+            <div id="proxiesTab" class="tab-panel">
+                <h3>Statistics by Reverse Proxy</h3>
+                <div id="proxiesTable"></div>
+            </div>
+
+            <!-- API Keys Tab -->
+            <div id="apikeysTab" class="tab-panel">
+                <h3>API Keys Usage</h3>
+                
+                <div class="export-controls">
+                    <div class="filter-controls">
+                        <label for="apiKeyFilter">Filter by:</label>
+                        <select id="apiKeyFilterBy">
+                            <option value="">All</option>
+                            <option value="handle">Handle</option>
+                            <option value="chatCompletionSource">Source</option>
+                            <option value="reverseProxy">Proxy</option>
+                            <option value="apiKeySource">Key Source</option>
+                            <option value="path">Path</option>
+                        </select>
+                        <input type="text" id="apiKeyFilterValue" placeholder="Filter value..." style="display: none;">
+                        <button id="applyApiKeyFilter" class="filter-btn">Apply Filter</button>
+                        <button id="clearApiKeyFilter" class="filter-btn" style="background: #6c757d;">Clear</button>
+                    </div>
+                    
+                    <button id="exportApiKeys" class="export-btn">Export CSV</button>
+                </div>
+                
+                <div id="apiKeysTable"></div>
+                <div id="apiKeysPagination" class="pagination"></div>
+            </div>
+            
+            <!-- Duplicates Tab -->
+            <div id="duplicatesTab" class="tab-panel">
+                <h3>Duplicate API Keys</h3>
+                <p>API keys being used by multiple handles or sources</p>
+                <div id="duplicatesTable"></div>
+            </div>
+            
+            <!-- Top Keys Tab -->
+            <div id="topkeysTab" class="tab-panel">
+                <h3>Top API Keys by Usage</h3>
+                <div id="topKeysTable"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Details Modal -->
+    <div id="apiKeyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>API Key Details</h3>
+                <button class="close-btn" onclick="closeApiKeyModal()">Close</button>
+            </div>
+            <div id="apiKeyDetails"></div>
+        </div>
+    </div>
+
+    <script>
+        class Dashboard {
+            constructor() {
+                this.token = localStorage.getItem('adminToken');
+                this.currentPage = 1;
+                this.pageSize = 20;
+                this.filters = {};
+                this.apiKeyFilters = {};
+                
+                this.init();
+            }
+
+            init() {
+                this.checkAuth();
+                this.bindEvents();
+                this.initDateFilters();
+            }
+
+            checkAuth() {
+                if (this.token) {
+                    this.showDashboard();
+                    this.loadData();
+                } else {
+                    this.showLogin();
+                }
+            }
+
+            bindEvents() {
+                // Login form
+                document.getElementById('loginForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.login();
+                });
+
+                // Logout
+                document.getElementById('logoutBtn').addEventListener('click', () => {
+                    this.logout();
+                });
+
+                // Filters
+                document.getElementById('applyFilters').addEventListener('click', () => {
+                    this.applyFilters();
+                });
+
+                // Tabs
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        this.switchTab(tab.dataset.tab);
+                    });
+                });
+
+                // API Key filters
+                document.getElementById('apiKeyFilterBy').addEventListener('change', (e) => {
+                    const filterValue = document.getElementById('apiKeyFilterValue');
+                    if (e.target.value) {
+                        filterValue.style.display = 'inline-block';
+                        filterValue.placeholder = `Enter ${e.target.options[e.target.selectedIndex].text}...`;
+                    } else {
+                        filterValue.style.display = 'none';
+                    }
+                });
+
+                document.getElementById('applyApiKeyFilter').addEventListener('click', () => {
+                    this.applyApiKeyFilter();
+                });
+
+                document.getElementById('clearApiKeyFilter').addEventListener('click', () => {
+                    this.clearApiKeyFilter();
+                });
+
+                document.getElementById('exportApiKeys').addEventListener('click', () => {
+                    this.exportApiKeys();
+                });
+            }
+
+            initDateFilters() {
+                const now = new Date();
+                const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                
+                document.getElementById('startDate').value = this.formatDateForInput(oneWeekAgo);
+                document.getElementById('endDate').value = this.formatDateForInput(now);
+            }
+
+            formatDateForInput(date) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                
+                return `${year}-${month}-${day}T${hours}:${minutes}`;
+            }
+
+            async login() {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+
+                try {
+                    const response = await fetch('/admin/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ username, password }),
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        this.token = data.token;
+                        localStorage.setItem('adminToken', this.token);
+                        this.showDashboard();
+                        this.loadData();
+                    } else {
+                        alert(data.error || 'Login failed');
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    alert('Login failed');
+                }
+            }
+
+            logout() {
+                this.token = null;
+                localStorage.removeItem('adminToken');
+                this.showLogin();
+            }
+
+            showLogin() {
+                document.getElementById('loginContainer').style.display = 'flex';
+                document.getElementById('dashboard').style.display = 'none';
+            }
+
+            showDashboard() {
+                document.getElementById('loginContainer').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+            }
+
+            applyFilters() {
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                
+                this.filters = {};
+                if (startDate) this.filters.startDate = startDate;
+                if (endDate) this.filters.endDate = endDate;
+                
+                this.currentPage = 1;
+                this.loadData();
+            }
+
+            async apiCall(endpoint, params = {}) {
+                const url = new URL(`/api/stats/${endpoint}`, window.location.origin);
+                Object.keys(params).forEach(key => {
+                    if (params[key]) url.searchParams.append(key, params[key]);
+                });
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${this.token}`,
+                    },
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        this.logout();
+                        return null;
+                    }
+                    throw new Error(`API call failed: ${response.statusText}`);
+                }
+
+                return response.json();
+            }
+
+            async loadData() {
+                try {
+                    // Load overview
+                    await this.loadOverview();
+                    
+                    // Load timeline
+                    await this.loadTimeline();
+                    
+                    // Load current tab data
+                    const activeTab = document.querySelector('.tab.active').dataset.tab;
+                    await this.loadTabData(activeTab);
+                    
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                    this.showError('Failed to load data');
+                }
+            }
+
+            async loadOverview() {
+                const data = await this.apiCall('overview', this.filters);
+                if (!data) return;
+
+                const statsGrid = document.getElementById('overviewStats');
+                statsGrid.innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-number">${data.totalRequests.toLocaleString()}</div>
+                        <div class="stat-label">Total Requests</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.uniqueUsers.toLocaleString()}</div>
+                        <div class="stat-label">Unique Users</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.topSources.length}</div>
+                        <div class="stat-label">Active Sources</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.topPaths.length}</div>
+                        <div class="stat-label">Active Paths</div>
+                    </div>
+                `;
+            }
+
+            async loadTimeline() {
+                const data = await this.apiCall('timeline', {
+                    ...this.filters,
+                    interval: 'hour'
+                });
+                if (!data) return;
+
+                const ctx = document.getElementById('timelineChart').getContext('2d');
+                
+                // Destroy existing chart if it exists
+                if (this.timelineChart) {
+                    this.timelineChart.destroy();
+                }
+
+                this.timelineChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.map(item => item._id),
+                        datasets: [{
+                            label: 'Requests',
+                            data: data.map(item => item.count),
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            tension: 0.1
+                        }, {
+                            label: 'Unique Users',
+                            data: data.map(item => item.uniqueUsers),
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false, // Cho phép thay đổi tỷ lệ
+                        aspectRatio: 2, // Tỷ lệ 2:1 (rộng hơn cao)
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'bottom' // Đặt legend ở dưới để tiết kiệm không gian
+                            }
+                        }
+                    }
+                });
+            }
+
+            async switchTab(tabName) {
+                // Update tab buttons
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+
+                // Update tab panels
+                document.querySelectorAll('.tab-panel').forEach(panel => {
+                    panel.classList.remove('active');
+                });
+                document.getElementById(`${tabName}Tab`).classList.add('active');
+
+                // Load tab data
+                await this.loadTabData(tabName);
+            }
+
+            async loadTabData(tabName) {
+                switch (tabName) {
+                    case 'handles':
+                        await this.loadHandlesData();
+                        break;
+                    case 'sources':
+                        await this.loadSourcesData();
+                        break;
+                    case 'proxies':
+                        await this.loadProxiesData();
+                        break;
+                    case 'apikeys':
+                        await this.loadApiKeysData();
+                        break;
+                    case 'duplicates':
+                        await this.loadDuplicatesData();
+                        break;
+                    case 'topkeys':
+                        await this.loadTopKeysData();
+                        break;
+                }
+            }
+
+            async loadHandlesData() {
+                const data = await this.apiCall('by-handle', {
+                    ...this.filters,
+                    page: this.currentPage,
+                    limit: this.pageSize
+                });
+                if (!data) return;
+
+                const tableContainer = document.getElementById('handlesTable');
+                tableContainer.innerHTML = `
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Handle</th>
+                                <th>Total Requests</th>
+                                <th>Sources Used</th>
+                                <th>Paths Used</th>
+                                <th>Last Activity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.stats.map(item => `
+                                <tr>
+                                    <td>${item._id || 'Unknown'}</td>
+                                    <td>${item.totalRequests.toLocaleString()}</td>
+                                    <td>${item.sources.filter(s => s).length}</td>
+                                    <td>${item.paths.filter(p => p).length}</td>
+                                    <td>${new Date(item.lastActivity).toLocaleString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+
+                this.renderPagination(data.pagination, 'handlesPagination');
+            }
+
+            async loadSourcesData() {
+                const data = await this.apiCall('by-source', this.filters);
+                if (!data) return;
+
+                const tableContainer = document.getElementById('sourcesTable');
+                tableContainer.innerHTML = `
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Source</th>
+                                <th>Total Requests</th>
+                                <th>Unique Users</th>
+                                <th>Last Activity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.map(item => `
+                                <tr>
+                                    <td>${item._id || 'Unknown'}</td>
+                                    <td>${item.totalRequests.toLocaleString()}</td>
+                                    <td>${item.uniqueUsers.toLocaleString()}</td>
+                                    <td>${new Date(item.lastActivity).toLocaleString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+
+            async loadProxiesData() {
+                const data = await this.apiCall('by-proxy', this.filters);
+                if (!data) return;
+
+                const tableContainer = document.getElementById('proxiesTable');
+                tableContainer.innerHTML = `
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Reverse Proxy</th>
+                                <th>Total Requests</th>
+                                <th>Unique Users</th>
+                                <th>Last Activity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.map(item => `
+                                <tr>
+                                    <td>${item._id || 'Unknown'}</td>
+                                    <td>${item.totalRequests.toLocaleString()}</td>
+                                    <td>${item.uniqueUsers.toLocaleString()}</td>
+                                    <td>${new Date(item.lastActivity).toLocaleString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+
+            async loadApiKeysData() {
+                const params = {
+                    ...this.filters,
+                    ...this.apiKeyFilters,
+                    page: this.currentPage,
+                    limit: this.pageSize
+                };
+
+                const data = await this.apiCall('api-keys', params);
+                if (!data) return;
+
+                const tableContainer = document.getElementById('apiKeysTable');
+                tableContainer.innerHTML = `
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>API Key</th>
+                                <th>Handle</th>
+                                <th>Source</th>
+                                <th>Key Source</th>
+                                <th>Usage</th>
+                                <th>Last Used</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.data.map(item => `
+                                <tr>
+                                    <td class="api-key-cell">${item.maskedApiKey}</td>
+                                    <td>${item.handle || 'Unknown'}</td>
+                                    <td>${item.chatCompletionSource || 'Unknown'}</td>
+                                    <td>${item.apiKeySource || 'Unknown'}</td>
+                                    <td>
+                                        <span class="usage-badge ${this.getUsageBadgeClass(item.totalUsage)}">
+                                            ${item.totalUsage.toLocaleString()}
+                                        </span>
+                                    </td>
+                                    <td>${new Date(item.lastUsed).toLocaleString()}</td>
+                                    <td>
+                                        <button class="details-btn" onclick="dashboard.showApiKeyDetails('${item.apiKey}')">
+                                            Details
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+
+                this.renderPagination(data.pagination, 'apiKeysPagination');
+            }
+
+            async loadDuplicatesData() {
+                const data = await this.apiCall('duplicate-api-keys', this.filters);
+                if (!data) return;
+
+                const tableContainer = document.getElementById('duplicatesTable');
+                tableContainer.innerHTML = `
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>API Key</th>
+                                <th>Handles</th>
+                                <th>Sources</th>
+                                <th>Total Usage</th>
+                                <th>First Seen</th>
+                                <th>Last Seen</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.map(item => `
+                                <tr>
+                                    <td class="api-key-cell">
+                                        ${item.maskedApiKey}
+                                        <span class="duplicate-badge">DUPLICATE</span>
+                                    </td>
+                                    <td>
+                                        <strong>${item.handleCount}</strong> handles<br>
+                                        <small>${(item.handles || []).slice(0, 3).join(', ')}${item.handleCount > 3 ? '...' : ''}</small>
+                                    </td>
+                                    <td>
+                                        <strong>${item.sourceCount}</strong> sources<br>
+                                        <small>${(item.sources || []).slice(0, 2).join(', ')}${item.sourceCount > 2 ? '...' : ''}</small>
+                                    </td>
+                                    <td>
+                                        <span class="usage-badge ${this.getUsageBadgeClass(item.totalUsage)}">
+                                            ${item.totalUsage.toLocaleString()}
+                                        </span>
+                                    </td>
+                                    <td>${new Date(item.firstSeen).toLocaleString()}</td>
+                                    <td>${new Date(item.lastSeen).toLocaleString()}</td>
+                                    <td>
+                                        <button class="details-btn" onclick="dashboard.showApiKeyDetails('${item.apiKey}')">
+                                            Details
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+
+            async loadTopKeysData() {
+                const data = await this.apiCall('top-api-keys', { ...this.filters, limit: 50 });
+                if (!data) return;
+
+                const tableContainer = document.getElementById('topKeysTable');
+                tableContainer.innerHTML = `
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>API Key</th>
+                                <th>Usage</th>
+                                <th>Unique Handles</th>
+                                <th>Unique Sources</th>
+                                <th>Key Source</th>
+                                <th>Last Used</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.map((item, index) => `
+                                <tr>
+                                    <td><strong>#${index + 1}</strong></td>
+                                    <td class="api-key-cell">${item.maskedApiKey}</td>
+                                    <td>
+                                        <span class="usage-badge ${this.getUsageBadgeClass(item.totalUsage)}">
+                                            ${item.totalUsage.toLocaleString()}
+                                        </span>
+                                    </td>
+                                    <td>${item.uniqueHandles}</td>
+                                    <td>${item.uniqueSources}</td>
+                                    <td>${item.apiKeySource || 'Unknown'}</td>
+                                    <td>${new Date(item.lastUsed).toLocaleString()}</td>
+                                    <td>
+                                        <button class="details-btn" onclick="dashboard.showApiKeyDetails('${item.apiKey}')">
+                                            Details
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+
+            async showApiKeyDetails(apiKey) {
+                try {
+                    const data = await this.apiCall(`api-key-details/${encodeURIComponent(apiKey)}`, this.filters);
+                    if (!data) return;
+
+                    const modal = document.getElementById('apiKeyModal');
+                    const detailsContainer = document.getElementById('apiKeyDetails');
+                    
+                    detailsContainer.innerHTML = `
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-number">${data.stats.totalRequests || 0}</div>
+                                <div class="stat-label">Total Requests</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">${data.stats.uniqueHandles || 0}</div>
+                                <div class="stat-label">Unique Handles</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">${data.stats.uniqueSources || 0}</div>
+                                <div class="stat-label">Unique Sources</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">${data.stats.uniqueProxies || 0}</div>
+                                <div class="stat-label">Unique Proxies</div>
+                            </div>
+                        </div>
+                        
+                        <h4>Usage Details</h4>
+                        <p><strong>API Key:</strong> <code>${data.apiKey.substring(0, 8)}...${data.apiKey.substring(data.apiKey.length - 4)}</code></p>
+                        <p><strong>Key Source:</strong> ${data.stats.apiKeySource || 'Unknown'}</p>
+                        <p><strong>First Used:</strong> ${data.stats.firstUsed ? new Date(data.stats.firstUsed).toLocaleString() : 'Unknown'}</p>
+                        <p><strong>Last Used:</strong> ${data.stats.lastUsed ? new Date(data.stats.lastUsed).toLocaleString() : 'Unknown'}</p>
+                        
+                        <h4>Handles Using This Key</h4>
+                        <p>${(data.stats.handles || []).join(', ') || 'None'}</p>
+                        
+                        <h4>Sources Used</h4>
+                        <p>${(data.stats.sources || []).join(', ') || 'None'}</p>
+                        
+                        <h4>Proxies Used</h4>
+                        <p>${(data.stats.proxies || []).join(', ') || 'None'}</p>
+                        
+                        <h4>Paths Accessed</h4>
+                        <p>${(data.stats.paths || []).join(', ') || 'None'}</p>
+                        
+                        <div class="chart-container" style="margin-top: 2rem;">
+                            <h4>Usage Timeline</h4>
+                            <canvas id="apiKeyTimelineChart"></canvas>
+                        </div>
+                    `;
+
+                    modal.style.display = 'block';
+
+                    // Render timeline chart với kích thước nhỏ hơn
+                    setTimeout(() => {
+                        const ctx = document.getElementById('apiKeyTimelineChart').getContext('2d');
+                        new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: data.timeline.map(item => item._id),
+                                datasets: [{
+                                    label: 'Requests',
+                                    data: data.timeline.map(item => item.count),
+                                    borderColor: 'rgb(75, 192, 192)',
+                                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                    tension: 0.1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                aspectRatio: 3, // Tỷ lệ 3:1 cho modal
+                                scales: {
+                                    y: {
+                                        beginAtZero: true
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        display: false // Ẩn legend để tiết kiệm không gian
+                                    }
+                                }
+                            }
+                        });
+                    }, 100); // Delay nhỏ để modal hiển thị hoàn toàn
+
+                } catch (error) {
+                    console.error('Error loading API key details:', error);
+                    alert('Failed to load API key details');
+                }
+            }
+
+            applyApiKeyFilter() {
+                const filterBy = document.getElementById('apiKeyFilterBy').value;
+                const filterValue = document.getElementById('apiKeyFilterValue').value;
+                
+                this.apiKeyFilters = {};
+                if (filterBy && filterValue) {
+                    this.apiKeyFilters.filterBy = filterBy;
+                    this.apiKeyFilters.filterValue = filterValue;
+                }
+                
+                this.currentPage = 1;
+                this.loadApiKeysData();
+            }
+
+            clearApiKeyFilter() {
+                document.getElementById('apiKeyFilterBy').value = '';
+                document.getElementById('apiKeyFilterValue').value = '';
+                document.getElementById('apiKeyFilterValue').style.display = 'none';
+                this.apiKeyFilters = {};
+                this.currentPage = 1;
+                this.loadApiKeysData();
+            }
+
+            async exportApiKeys() {
+                try {
+                    const params = new URLSearchParams({
+                        ...this.filters,
+                        ...this.apiKeyFilters,
+                        format: 'csv'
+                    });
+
+                    const response = await fetch(`/api/stats/api-keys?${params}`, {
+                        headers: {
+                            'Authorization': `Bearer ${this.token}`,
+                        },
+                    });
+
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `api-keys-${new Date().toISOString().split('T')[0]}.csv`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                    } else {
+                        alert('Failed to export data');
+                    }
+                } catch (error) {
+                    console.error('Export error:', error);
+                    alert('Failed to export data');
+                }
+            }
+
+            getUsageBadgeClass(usage) {
+                if (usage > 1000) return 'usage-high';
+                if (usage > 100) return 'usage-medium';
+                return 'usage-low';
+            }
+
+            renderPagination(pagination, containerId) {
+                const container = document.getElementById(containerId);
+                const totalPages = Math.ceil(pagination.total / pagination.limit);
+                
+                let paginationHTML = '';
+                
+                if (pagination.page > 1) {
+                    paginationHTML += `<button onclick="dashboard.changePage(${pagination.page - 1})">Previous</button>`;
+                }
+                
+                for (let i = Math.max(1, pagination.page - 2); i <= Math.min(totalPages, pagination.page + 2); i++) {
+                    paginationHTML += `
+                        <button 
+                            onclick="dashboard.changePage(${i})" 
+                            class="${i === pagination.page ? 'active' : ''}"
+                        >
+                            ${i}
+                        </button>
+                    `;
+                }
+                
+                if (pagination.page < totalPages) {
+                    paginationHTML += `<button onclick="dashboard.changePage(${pagination.page + 1})">Next</button>`;
+                }
+                
+                container.innerHTML = paginationHTML;
+            }
+
+            async changePage(page) {
+                this.currentPage = page;
+                await this.loadHandlesData();
+            }
+
+            showError(message) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error';
+                errorDiv.textContent = message;
+                document.body.insertBefore(errorDiv, document.body.firstChild);
+                
+                setTimeout(() => {
+                    errorDiv.remove();
+                }, 5000);
+            }
+        }
+
+        function closeApiKeyModal() {
+            document.getElementById('apiKeyModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('apiKeyModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Initialize dashboard
+        const dashboard = new Dashboard();
+    </script>
+</body>
+</html>
