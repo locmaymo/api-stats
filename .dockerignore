@@ -1,18 +1,9 @@
 # Contents of the file: /api-stats/.dockerignore
 
 node_modules
-npm-debug.log
 Dockerfile
-docker-compose.yml
+docker-compose.yaml
 .dockerignore
 .gitignore
 .env
-README.md
-public/admin.html
-src/models/index.js
-src/routes/stats.js
-src/middleware/auth.js
-src/server.js
-src/**/*.test.js
-src/**/*.spec.js
-docker/nginx/nginx.conf
+.git
