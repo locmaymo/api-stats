@@ -3,7 +3,10 @@ version: '3.8'
 services:
   api:
     image: ghcr.io/locmaymo/api-stats:latest
+    env_file:
+      - .env
     environment:
+      - PORT=${PORT}
       - NODE_ENV=production
       - MONGODB_URI=${MONGODB_URI}
       - JWT_SECRET=${JWT_SECRET}
