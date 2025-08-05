@@ -28,7 +28,7 @@ jobs:
           context: .
           file: ./docker/Dockerfile
           push: true
-          tags: your-dockerhub-username/api-stats:latest
+          tags: locmaymo/api-stats:latest
 
       - name: Log out from Docker Hub
         run: docker logout
