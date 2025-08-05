@@ -327,14 +327,7 @@ router.get('/api-keys', authenticateAdmin, async (req, res) => {
                     totalUsage: 1,
                     paths: 1,
                     secretKeys: 1,
-                    // Mask API key for security (show first 8 and last 4 chars)
-                    maskedApiKey: {
-                        $concat: [
-                            { $substr: ['$_id.apiKey', 0, 8] },
-                            '...',
-                            { $substr: ['$_id.apiKey', { $subtract: [{ $strLenCP: '$_id.apiKey' }, 4] }, 4] }
-                        ]
-                    }
+                    maskedApiKey: '$_id.apiKey'
                 }
             },
             { $sort: { lastUsed: -1 } },
@@ -507,13 +500,7 @@ router.get('/duplicate-api-keys', authenticateAdmin, async (req, res) => {
             {
                 $project: {
                     apiKey: '$_id',
-                    maskedApiKey: {
-                        $concat: [
-                            { $substr: ['$_id', 0, 8] },
-                            '...',
-                            { $substr: ['$_id', { $subtract: [{ $strLenCP: '$_id' }, 4] }, 4] }
-                        ]
-                    },
+                    maskedApiKey: '$_id',
                     handleCount: { $size: '$handles' },
                     sourceCount: { $size: '$sources' },
                     proxyCount: { $size: '$proxies' },
@@ -541,7 +528,7 @@ router.get('/top-api-keys', authenticateAdmin, async (req, res) => {
     try {
         const { startDate, endDate, limit = 20 } = req.query;
         
-        const filter = { apiKey: { $ne: null, $ne: '' } };
+        const filter = { apiKey: { $ne: null, $ne: '', $exists: true } };
         if (startDate && endDate) {
             filter.timestamp = {
                 $gte: new Date(startDate),
@@ -562,15 +549,14 @@ router.get('/top-api-keys', authenticateAdmin, async (req, res) => {
                 }
             },
             {
+                $match: {
+                    _id: { $ne: null, $ne: '' }
+                }
+            },
+            {
                 $project: {
                     apiKey: '$_id',
-                    maskedApiKey: {
-                        $concat: [
-                            { $substr: ['$_id', 0, 8] },
-                            '...',
-                            { $substr: ['$_id', { $subtract: [{ $strLenCP: '$_id' }, 4] }, 4] }
-                        ]
-                    },
+                    maskedApiKey: '$_id',
                     totalUsage: 1,
                     uniqueHandles: { $size: '$uniqueHandles' },
                     uniqueSources: { $size: '$uniqueSources' },
