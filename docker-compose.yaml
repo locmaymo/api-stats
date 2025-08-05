@@ -12,8 +12,6 @@ services:
       - ADMIN_USERNAME=${ADMIN_USERNAME}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - API_KEY=${API_KEY}
-    ports:
-      - "3001:3001"
     volumes:
       - ./src:/usr/src/app/src
       - ./public:/usr/src/app/public
@@ -29,10 +27,11 @@ services:
   nginx:
     image: nginx:latest
     volumes:
-      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./public:/usr/share/nginx/html
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - /etc/ssl:/etc/ssl
     ports:
       - "80:80"
+      - "443:443"
     depends_on:
       - api
 
