@@ -1140,7 +1140,7 @@
                         </div>
                         
                         <h4>Usage Details</h4>
-                        <p><strong>API Key:</strong> <code>${data.apiKey.substring(0, 8)}...${data.apiKey.substring(data.apiKey.length - 4)}</code></p>
+                        <p><strong>API Key:</strong> <code>${data.apiKey}</code></p>
                         <p><strong>Key Source:</strong> ${data.stats.apiKeySource || 'Unknown'}</p>
                         <p><strong>First Used:</strong> ${data.stats.firstUsed ? new Date(data.stats.firstUsed).toLocaleString() : 'Unknown'}</p>
                         <p><strong>Last Used:</strong> ${data.stats.lastUsed ? new Date(data.stats.lastUsed).toLocaleString() : 'Unknown'}</p>
